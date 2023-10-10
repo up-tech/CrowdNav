@@ -8,7 +8,7 @@ import gym
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.robot import Robot
-from crowd_sim.envs.policy.orca import ORCA
+from crowd_nav.policy.orca import ORCA
 
 
 def main():

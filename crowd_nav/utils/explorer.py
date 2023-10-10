@@ -41,7 +41,7 @@ class Explorer(object):
             while not done:
                 action = self.robot.act(ob)
                 ob, reward, done, info = self.env.step(action)
-                states.append(self.robot.policy.last_state)
+                states.append(self.robot.policy.last_state) # after transform and rotate
                 actions.append(action)
                 rewards.append(reward)
 
