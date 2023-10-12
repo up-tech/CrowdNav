@@ -68,11 +68,25 @@ class ValueNetwork(nn.Module):
         #self.attention_weights = weights[0, :, 0].data.cpu().numpy()
         #print(f'scores size: {scores.shape}')
         scores = self.score_linear(scores)
+    
+        #weighted_humans = scores * mlp2_output
+        scores = torch.sum(scores, dim=-1)
+        scores = torch.nn.functional.softmax(scores, dim=-1).unsqueeze(-1)
+        #print(f'scores size: {scores.shape}')
 
-        weighted_humans = scores * mlp2_output
+        mlp2_output = torch.transpose(mlp2_output, -1, -2)
+        #print(f'mlp2_output size: {mlp2_output.shape}')
+
+        weighted_humans = torch.bmm(mlp2_output, scores)
         #print(f'weighted_humans size: {weighted_humans.shape}')
-        weighted_humans = torch.sum(weighted_humans, dim=1)
+
+        #print(f'weighted_humans size: {weighted_humans.shape}')
+        #weighted_humans = torch.sum(weighted_humans, dim=1)
+        weighted_humans = torch.transpose(weighted_humans, -1, -2).squeeze(-2)
+        #print(f'1weighted_humans size: {weighted_humans.shape}')
+
         joint_state = torch.cat([self_state, weighted_humans], dim=1)
+        #print(f'joint_state size: {joint_state.shape}')
 
         #scores = self.attention(attention_input).view(size[0], size[1], 1).squeeze(dim=2)
 
