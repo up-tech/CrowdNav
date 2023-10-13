@@ -73,6 +73,8 @@ class ValueNetwork(nn.Module):
         scores = torch.sum(scores, dim=-1)
         scores = torch.nn.functional.softmax(scores, dim=-1).unsqueeze(-1)
         #print(f'scores size: {scores.shape}')
+        self.attention_weights = scores[0, :, 0].data.cpu().numpy()
+        #print(self.attention_weights)
 
         mlp2_output = torch.transpose(mlp2_output, -1, -2)
         #print(f'mlp2_output size: {mlp2_output.shape}')
