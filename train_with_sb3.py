@@ -26,9 +26,9 @@ def main():
     print(f'robot policy method: {method}')
     policy = policy_factory[method]()
 
-    policy_kwargs = dict(
-        net_arch=dict(pi=[], qf=policy)
-    )
+    # policy_kwargs = dict(
+    #     net_arch=dict(pi=[], qf=policy)
+    # )
 
     #model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, learning_rate=1e-3, verbose=1)
     model = DQN("MlpPolicy" , env, learning_rate=1e-3, verbose=1)

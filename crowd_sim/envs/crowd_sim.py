@@ -4,8 +4,10 @@ from gym import spaces
 import matplotlib.lines as mlines
 import numpy as np
 import rvo2
+import torch
 from matplotlib import patches
 from numpy.linalg import norm
+from crowd_sim.envs.utils.state import JointState
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
 from crowd_sim.envs.utils.utils import point_to_segment_dist
@@ -209,13 +211,63 @@ class CrowdSim(gym.Env):
             ob = [human.get_observable_state() for human in self.humans]
         elif self.robot.sensor == 'RGB':
             raise NotImplementedError
+        
+        state = JointState(self.robot.get_full_state(), ob)
+        state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
+                                  for human_state in state.human_states], dim=0)
+        state_tensor = self.rotate(state_tensor)
+        state_output = state_tensor[0][ : 6]
+        for human_state in state_tensor:
+            state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
 
-        return ob
+        print(state_output)
+
+        return state_output #ob
+    
+    def rotate(self, state):
+        """
+        Transform the coordinate to agent-centric.
+        Input state tensor is of size (batch_size, state_length)
+
+        """
+        # 'px', 'py', 'vx', 'vy', 'radius', 'gx', 'gy', 'v_pref', 'theta', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
+        #  0     1      2     3      4        5     6      7         8       9     10      11     12       13
+        batch = state.shape[0]
+        dx = (state[:, 5] - state[:, 0]).reshape((batch, -1))
+        dy = (state[:, 6] - state[:, 1]).reshape((batch, -1))
+        rot = torch.atan2(state[:, 6] - state[:, 1], state[:, 5] - state[:, 0])
+
+        dg = torch.norm(torch.cat([dx, dy], dim=1), 2, dim=1, keepdim=True)
+        v_pref = state[:, 7].reshape((batch, -1))
+        vx = (state[:, 2] * torch.cos(rot) + state[:, 3] * torch.sin(rot)).reshape((batch, -1))
+        vy = (state[:, 3] * torch.cos(rot) - state[:, 2] * torch.sin(rot)).reshape((batch, -1))
+
+        radius = state[:, 4].reshape((batch, -1))
+
+        # set theta to be zero since it's not used
+        theta = torch.zeros_like(v_pref)
+        vx1 = (state[:, 11] * torch.cos(rot) + state[:, 12] * torch.sin(rot)).reshape((batch, -1))
+        vy1 = (state[:, 12] * torch.cos(rot) - state[:, 11] * torch.sin(rot)).reshape((batch, -1))
+        px1 = (state[:, 9] - state[:, 0]) * torch.cos(rot) + (state[:, 10] - state[:, 1]) * torch.sin(rot)
+        px1 = px1.reshape((batch, -1))
+        py1 = (state[:, 10] - state[:, 1]) * torch.cos(rot) - (state[:, 9] - state[:, 0]) * torch.sin(rot)
+        py1 = py1.reshape((batch, -1))
+        radius1 = state[:, 13].reshape((batch, -1))
+        radius_sum = radius + radius1
+        da = torch.norm(torch.cat([(state[:, 0] - state[:, 9]).reshape((batch, -1)), (state[:, 1] - state[:, 10]).
+                                reshape((batch, -1))], dim=1), 2, dim=1, keepdim=True)
+        new_state = torch.cat([dg, v_pref, theta, radius, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
+
+        return new_state
+
+    def transfrom(self):
+        #self.px, self.py, self.vx, self.vy, self.radius
+        pass
 
     def onestep_lookahead(self, action):
-        return self.step(action, update=False)
+        return self.step(action)
 
-    def step(self, action, update=True):
+    def step(self, action):
         """
         Compute actions for all agents, detect collision, update environment and return (ob, reward, done, info)
 
@@ -224,6 +276,8 @@ class CrowdSim(gym.Env):
         for human in self.humans:
             # observation for humans is always coordinates
             ob = [other_human.get_observable_state() for other_human in self.humans if other_human != human]
+            
+            
             if self.robot.visible:
                 ob += [self.robot.get_observable_state()]
             human_actions.append(human.act(ob))
@@ -289,36 +343,41 @@ class CrowdSim(gym.Env):
             done = False
             info = Nothing()
 
-        if update:
-            # store state, action value and attention weights
-            self.states.append([self.robot.get_full_state(), [human.get_full_state() for human in self.humans]])
-            if hasattr(self.robot.policy, 'action_values'):
-                self.action_values.append(self.robot.policy.action_values)
-            if hasattr(self.robot.policy, 'get_attention_weights'):
-                self.attention_weights.append(self.robot.policy.get_attention_weights())
+        # store state, action value and attention weights
+        self.states.append([self.robot.get_full_state(), [human.get_full_state() for human in self.humans]])
+        if hasattr(self.robot.policy, 'action_values'):
+            self.action_values.append(self.robot.policy.action_values)
+        if hasattr(self.robot.policy, 'get_attention_weights'):
+            self.attention_weights.append(self.robot.policy.get_attention_weights())
 
-            # update all agents
-            self.robot.step(action)
-            for i, human_action in enumerate(human_actions):
-                self.humans[i].step(human_action)
-            self.global_time += self.time_step
-            for i, human in enumerate(self.humans):
-                # only record the first time the human reaches the goal
-                if self.human_times[i] == 0 and human.reached_destination():
-                    self.human_times[i] = self.global_time
+        # update all agents
+        self.robot.step(action)
+        for i, human_action in enumerate(human_actions):
+            self.humans[i].step(human_action)
+        self.global_time += self.time_step
+        for i, human in enumerate(self.humans):
+            # only record the first time the human reaches the goal
+            if self.human_times[i] == 0 and human.reached_destination():
+                self.human_times[i] = self.global_time
 
-            # compute the observation
-            if self.robot.sensor == 'coordinates':
-                ob = [human.get_observable_state() for human in self.humans]
-            elif self.robot.sensor == 'RGB':
-                raise NotImplementedError
-        else:
-            if self.robot.sensor == 'coordinates':
-                ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
-            elif self.robot.sensor == 'RGB':
-                raise NotImplementedError
+        # compute the observation
 
-        return ob, reward, done, info
+        ob = [human.get_observable_state() for human in self.humans]
+        state = JointState(self.robot.get_full_state(), ob)
+        state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
+                                for human_state in state.human_states], dim=0)
+        state_tensor = self.rotate(state_tensor)
+        state_output = state_tensor[0][ : 6]
+        for human_state in state_tensor:
+            state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
+
+        # else:
+        #     if self.robot.sensor == 'coordinates':
+        #         ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
+        #     elif self.robot.sensor == 'RGB':
+        #         raise NotImplementedError
+
+        return state_output, reward, done, info
 
     def render(self, mode='human', output_file=None):
         from matplotlib import animation
