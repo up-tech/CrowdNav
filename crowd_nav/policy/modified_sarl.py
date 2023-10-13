@@ -14,20 +14,14 @@ class ValueNetwork(nn.Module):
         self.global_state_dim = mlp1_dims[-1]
         self.mlp1 = mlp(input_dim, mlp1_dims, last_relu=True)
         self.mlp2 = mlp(mlp1_dims[-1], mlp2_dims)
-        self.with_global_state = with_global_state
-        if with_global_state:
-            self.attention = mlp(mlp1_dims[-1] * 2, attention_dims)
-        else:
-            self.attention = mlp(mlp1_dims[-1], attention_dims)
         self.cell_size = cell_size
         self.cell_num = cell_num
         mlp3_input_dim = mlp2_dims[-1] + self.self_state_dim
         self.mlp3 = mlp(mlp3_input_dim, mlp3_dims)
-        self.attention_weights = None
 
-        self.q_linear = nn.Linear(200, 128)
-        self.k_linear = nn.Linear(200, 128)
-        self.v_linear = nn.Linear(200, 128)
+        self.q_linear = nn.Linear(100, 128)
+        self.k_linear = nn.Linear(100, 128)
+        self.v_linear = nn.Linear(100, 128)
 
         self.score_linear = nn.Linear(128, 50)
 
@@ -43,18 +37,11 @@ class ValueNetwork(nn.Module):
         size = state.shape
         #print(f'state size: {size}')
         self_state = state[:, 0, :self.self_state_dim]
+        
         mlp1_output = self.mlp1(state.view((-1, size[2])))
         mlp2_output = self.mlp2(mlp1_output).view(size[0], size[1], -1)
 
-        if self.with_global_state:
-            # compute attention scores
-            global_state = torch.mean(mlp1_output.view(size[0], size[1], -1), 1, keepdim=True)
-            global_state = global_state.expand((size[0], size[1], self.global_state_dim)).\
-                contiguous().view(-1, self.global_state_dim)
-            #print(f'global_state size: {global_state.shape}')
-            attention_input = torch.cat([mlp1_output, global_state], dim=1) #[batch_size*5, 200]
-        else:
-            attention_input = mlp1_output
+        attention_input = mlp1_output
         # modify start
         attention_input = attention_input.view(size[0], size[1], -1)
         #print(f'attention_input size: {attention_input.shape}')

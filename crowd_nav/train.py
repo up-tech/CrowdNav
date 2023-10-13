@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--policy', type=str, default='cadrl')
     parser.add_argument('--policy_config', type=str, default='configs/policy.config')
     parser.add_argument('--train_config', type=str, default='configs/train.config')
-    parser.add_argument('--output_dir', type=str, default='data/modified_sarl_output_1')
+    parser.add_argument('--output_dir', type=str, default='data/modified_sarl_output_2')
     parser.add_argument('--weights', type=str)
     parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
