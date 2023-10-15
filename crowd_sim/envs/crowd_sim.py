@@ -1,4 +1,5 @@
 import logging
+import math
 import gym
 from gym import spaces
 import matplotlib.lines as mlines
@@ -11,6 +12,8 @@ from crowd_sim.envs.utils.state import JointState
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
 from crowd_sim.envs.utils.utils import point_to_segment_dist
+from collections import namedtuple
+from crowd_sim.envs.utils.action import ActionXY, ActionRot
 
 
 class CrowdSim(gym.Env):
@@ -48,26 +51,12 @@ class CrowdSim(gym.Env):
         self.action_values = None
         self.attention_weights = None
 
-        self.action_space = spaces.Discrete(2)
-        high = np.array(
-            [
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-                np.finfo(np.float32).max,
-            ],
-            dtype=np.float32
-        )
-        self.observation_space = spaces.Box(-high, high, dtype=np.float32)
+        self.action_space = spaces.Discrete(100)
+
+        self.mapping_linear_x = lambda action: action % 10
+        self.mapping_linear_y = lambda action: math.floor(action / 10)                                   
+
+        self.observation_space = spaces.Box(low=-100, high=100, shape=(13,))
 
     def configure(self, config):
         self.config = config
@@ -272,6 +261,12 @@ class CrowdSim(gym.Env):
         Compute actions for all agents, detect collision, update environment and return (ob, reward, done, info)
 
         """
+        print(f"action: {action}")
+        print(f"action: {action}")
+
+        action_vx = self.mapping_linear_x(action)
+        action_vy = self.mapping_linear_y(action)
+
         human_actions = []
         for human in self.humans:
             # observation for humans is always coordinates
@@ -285,15 +280,12 @@ class CrowdSim(gym.Env):
         # collision detection
         dmin = float('inf')
         collision = False
+
         for i, human in enumerate(self.humans):
             px = human.px - self.robot.px
             py = human.py - self.robot.py
-            if self.robot.kinematics == 'holonomic':
-                vx = human.vx - action.vx
-                vy = human.vy - action.vy
-            else:
-                vx = human.vx - action.v * np.cos(action.r + self.robot.theta)
-                vy = human.vy - action.v * np.sin(action.r + self.robot.theta)
+            vx = human.vx - action_vx
+            vy = human.vy - action_vy
             ex = px + vx * self.time_step
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
@@ -317,7 +309,10 @@ class CrowdSim(gym.Env):
                     logging.debug('Collision happens between humans in step()')
 
         # check if reaching the goal
-        end_position = np.array(self.robot.compute_position(action, self.time_step))
+        action_tuple = ActionXY(action_vx, action_vx)
+
+        end_position = np.array(self.robot.compute_position(action_tuple, self.time_step))
+
         reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
 
         if self.global_time >= self.time_limit - 1:
@@ -351,7 +346,7 @@ class CrowdSim(gym.Env):
             self.attention_weights.append(self.robot.policy.get_attention_weights())
 
         # update all agents
-        self.robot.step(action)
+        self.robot.step(action_tuple)
         for i, human_action in enumerate(human_actions):
             self.humans[i].step(human_action)
         self.global_time += self.time_step
@@ -376,7 +371,7 @@ class CrowdSim(gym.Env):
         #         ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
         #     elif self.robot.sensor == 'RGB':
         #         raise NotImplementedError
-
+        info = {}
         return state_output, reward, done, info
 
     def render(self, mode='human', output_file=None):
