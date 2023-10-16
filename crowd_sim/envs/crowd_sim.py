@@ -53,10 +53,12 @@ class CrowdSim(gym.Env):
 
         self.action_space = spaces.Discrete(100)
 
-        self.mapping_linear_x = lambda action: action % 10
-        self.mapping_linear_y = lambda action: math.floor(action / 10)                                   
+        self.mapping_linear_x = lambda action: ((action % 10) - 5) / 5.0
+        self.mapping_linear_y = lambda action: (math.floor(action / 10) - 5) / 5.0
 
-        self.observation_space = spaces.Box(low=-100, high=100, shape=(13,))
+        self.observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+
+        self.last_dist = None
 
     def configure(self, config):
         self.config = config
@@ -163,6 +165,9 @@ class CrowdSim(gym.Env):
         Set px, py, gx, gy, vx, vy, theta for agents (robot and humans)
         :return:
         """
+
+        self.last_dist = 4.0
+
         if self.robot is None:
             raise AttributeError('robot has to be set!')
         
@@ -209,7 +214,7 @@ class CrowdSim(gym.Env):
         for human_state in state_tensor:
             state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
 
-        print(state_output)
+        #print(state_output)
 
         return state_output #ob
     
@@ -261,11 +266,11 @@ class CrowdSim(gym.Env):
         Compute actions for all agents, detect collision, update environment and return (ob, reward, done, info)
 
         """
-        print(f"action: {action}")
-        print(f"action: {action}")
+        #print(f"action in sim: {action}")
 
         action_vx = self.mapping_linear_x(action)
         action_vy = self.mapping_linear_y(action)
+        #print(f"action_vx: {action_vx}; action_vy: {action_vy}")
 
         human_actions = []
         for human in self.humans:
@@ -309,34 +314,51 @@ class CrowdSim(gym.Env):
                     logging.debug('Collision happens between humans in step()')
 
         # check if reaching the goal
-        action_tuple = ActionXY(action_vx, action_vx)
+        action_tuple = ActionXY(action_vx, action_vy)
 
         end_position = np.array(self.robot.compute_position(action_tuple, self.time_step))
+        #print(f'end_position is: {end_position[0]}, {end_position[1]}')
 
         reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
+
+        current_dist = math.sqrt(end_position[0] * end_position[0] + (2 - end_position[1]) * (2 - end_position[1]))
+        #print(f'current_dist is: {current_dist}')
+
+        delta_dist = self.last_dist - current_dist
+        #print(f'delta_dist is: {delta_dist}')
+        self.last_dist = current_dist
+
+        reward_to_goal = delta_dist
+        reward_goal = 0
 
         if self.global_time >= self.time_limit - 1:
             reward = 0
             done = True
             info = Timeout()
-        elif collision:
-            reward = self.collision_penalty
-            done = True
-            info = Collision()
+        # elif collision:
+        #     reward = self.collision_penalty
+        #     done = True
+        #     info = Collision()
         elif reaching_goal:
             reward = self.success_reward
+            reward_goal = reward
             done = True
             info = ReachGoal()
-        elif dmin < self.discomfort_dist:
-            # only penalize agent for getting too close if it's visible
-            # adjust the reward based on FPS
-            reward = (dmin - self.discomfort_dist) * self.discomfort_penalty_factor * self.time_step
-            done = False
-            info = Danger(dmin)
+        # elif dmin < self.discomfort_dist:
+        #     # only penalize agent for getting too close if it's visible
+        #     # adjust the reward based on FPS
+        #     reward = (dmin - self.discomfort_dist) * self.discomfort_penalty_factor * self.time_step
+        #     done = False
+        #     info = Danger(dmin)
         else:
             reward = 0
             done = False
             info = Nothing()
+        
+        #reward = reward_to_goal + reward
+        reward = reward_to_goal + reward_goal
+        
+        #print(f'reward is: {reward}')
 
         # store state, action value and attention weights
         self.states.append([self.robot.get_full_state(), [human.get_full_state() for human in self.humans]])
@@ -453,7 +475,7 @@ class CrowdSim(gym.Env):
 
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
-            goal = mlines.Line2D([0], [4], color=goal_color, marker='*', linestyle='None', markersize=15, label='Goal')
+            goal = mlines.Line2D([0], [2], color=goal_color, marker='*', linestyle='None', markersize=15, label='Goal')
             robot = plt.Circle(robot_positions[0], self.robot.radius, fill=True, color=robot_color)
             ax.add_artist(robot)
             ax.add_artist(goal)
