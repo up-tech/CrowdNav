@@ -337,35 +337,32 @@ class CrowdSim(gym.Env):
         #print(f'delta_dist is: {delta_dist}')
         self.last_dist = current_dist
 
-        reward_to_goal = delta_dist
-        reward_goal = 0
+        reward_to_goal = delta_dist * 0.1
 
         if self.global_time >= self.time_limit - 1:
             reward = 0
             done = True
             info = Timeout()
-        # elif collision:
-        #     reward = self.collision_penalty
-        #     done = True
-        #     info = Collision()
+        elif collision:
+            reward = self.collision_penalty
+            done = True
+            info = Collision()
         elif reaching_goal:
             reward = self.success_reward
-            reward_goal = reward
             done = True
             info = ReachGoal()
-        # elif dmin < self.discomfort_dist:
-        #     # only penalize agent for getting too close if it's visible
-        #     # adjust the reward based on FPS
-        #     reward = (dmin - self.discomfort_dist) * self.discomfort_penalty_factor * self.time_step
-        #     done = False
-        #     info = Danger(dmin)
+        elif dmin < self.discomfort_dist:
+            # only penalize agent for getting too close if it's visible
+            # adjust the reward based on FPS
+            reward = (dmin - self.discomfort_dist) * self.discomfort_penalty_factor * self.time_step
+            done = False
+            info = Danger(dmin)
         else:
             reward = 0
             done = False
             info = Nothing()
         
-        #reward = reward_to_goal + reward
-        reward = reward_to_goal + reward_goal
+        reward = reward_to_goal + reward
         
         #print(f'reward is: {reward}')
 
@@ -388,22 +385,29 @@ class CrowdSim(gym.Env):
 
         # compute the observation
 
+        # ob = [human.get_observable_state() for human in self.humans]
+        # state = JointState(self.robot.get_full_state(), ob)
+        # state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
+        #                         for human_state in state.human_states], dim=0)
+        # state_tensor = self.rotate(state_tensor)
+        # state_output = state_tensor[0][ : 6]
+        # for human_state in state_tensor:
+        #     state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
+        
+        # ob = [human.get_observable_state() for human in self.humans]
+
         ob = [human.get_observable_state() for human in self.humans]
+        
         state = JointState(self.robot.get_full_state(), ob)
         state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
-                                for human_state in state.human_states], dim=0)
+                                  for human_state in state.human_states], dim=0)
         state_tensor = self.rotate(state_tensor)
-        state_output = state_tensor[0][ : 6]
-        for human_state in state_tensor:
-            state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
+        ob = {}
+        ob['human1_ob'] = state_tensor[0]
+        ob['human2_ob'] = state_tensor[1]
 
-        # else:
-        #     if self.robot.sensor == 'coordinates':
-        #         ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
-        #     elif self.robot.sensor == 'RGB':
-        #         raise NotImplementedError
         info = {}
-        return state_output, reward, done, info
+        return ob, reward, done, info
 
     def render(self, mode='human', output_file=None):
         from matplotlib import animation
