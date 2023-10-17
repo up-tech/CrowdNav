@@ -56,7 +56,13 @@ class CrowdSim(gym.Env):
         self.mapping_linear_x = lambda action: ((action % 10) - 5) / 5.0
         self.mapping_linear_y = lambda action: (math.floor(action / 10) - 5) / 5.0
 
-        self.observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+        human1_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+        human2_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+
+        self.observation_space = spaces.Dict({
+            'human1_ob': human1_observation_space,
+            'human2_ob': human2_observation_space
+        })
 
         self.last_dist = None
 
@@ -201,22 +207,26 @@ class CrowdSim(gym.Env):
             self.attention_weights = list()
 
         # get current observation
-        if self.robot.sensor == 'coordinates':
-            ob = [human.get_observable_state() for human in self.humans]
-        elif self.robot.sensor == 'RGB':
-            raise NotImplementedError
+
+        ob = [human.get_observable_state() for human in self.humans]
         
         state = JointState(self.robot.get_full_state(), ob)
         state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
                                   for human_state in state.human_states], dim=0)
         state_tensor = self.rotate(state_tensor)
-        state_output = state_tensor[0][ : 6]
-        for human_state in state_tensor:
-            state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
+        #print(state_tensor)
 
-        #print(state_output)
+        # self_state = state_tensor[0][ : 6]
+        # for human_state in state_tensor:
+        #     state_output = torch.cat((self_state, human_state[6 : ]), dim=0)
 
-        return state_output #ob
+        ob = {}
+        ob['human1_ob'] = state_tensor[0]
+        ob['human2_ob'] = state_tensor[1]
+
+        #print(state_output.shape)
+
+        return ob
     
     def rotate(self, state):
         """
@@ -276,7 +286,6 @@ class CrowdSim(gym.Env):
         for human in self.humans:
             # observation for humans is always coordinates
             ob = [other_human.get_observable_state() for other_human in self.humans if other_human != human]
-            
             
             if self.robot.visible:
                 ob += [self.robot.get_observable_state()]
