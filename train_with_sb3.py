@@ -4,6 +4,7 @@ import configparser
 import torch
 import gym
 from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import dummy_vec_env
 from crowd_sim.envs.utils.robot import Robot
 from crowd_nav.policy.policy_factory import policy_factory
@@ -47,12 +48,12 @@ def main():
 
     params = {"learning_rate": 1e-3,
               "tensorboard_log": logdir,
-              "exploration_initial_eps": 0.5,
+              #"exploration_initial_eps": 0.5,
               "batch_size": 5}
 
     #output dim == action discrete number
     #model = DQN("MultiInputPolicy", env, verbose=1, **params, policy_kwargs=policy_kwargs)
-    model = DQN("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
+    model = PPO("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
     print(model.policy)
 
     TIMESTEPS = 1000

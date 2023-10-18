@@ -24,7 +24,7 @@ class CustomNN(BaseFeaturesExtractor):
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         
         output = self.linear_1(observations)
-        print("test")
+        print(observations.shape)
         return output
     
         #return self.nn(observations)
