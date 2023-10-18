@@ -64,6 +64,7 @@ class ValueNetwork(nn.Module):
 
         scores = torch.bmm(q, k) #[100, 10, 10]
         temperature = 1 / np.sqrt(50)
+        temperature = temperature / 0.05
         scores = torch.mul(scores, temperature) #[100, 10, 10]
         scores = torch.softmax(scores, dim=-1)
         scores = torch.sum(scores, dim=-2)
