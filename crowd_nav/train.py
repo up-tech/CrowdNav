@@ -69,7 +69,7 @@ def main():
     policy_config.read(args.policy_config)
     policy.configure(policy_config)
     policy.set_device(device)
-
+    torch.set_num_threads(16)
     # configure environment
     env_config = configparser.RawConfigParser()
     env_config.read(args.env_config)
@@ -98,6 +98,7 @@ def main():
     # configure trainer and explorer
     memory = ReplayMemory(capacity)
     model = policy.get_model()
+    print(model)
     batch_size = train_config.getint('trainer', 'batch_size')
     trainer = Trainer(model, memory, device, batch_size)
     explorer = Explorer(env, robot, device, memory, policy.gamma, target_policy=policy)
