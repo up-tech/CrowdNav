@@ -284,7 +284,7 @@ class CrowdSim(gym.Env):
 
         """
         #print(f"action in sim: {action}")
-        print(type(action))
+        #print(type(action))
         if isinstance(action, np.ndarray):
             action = action[0]
         action_vx = self.mapping_linear_x(action)

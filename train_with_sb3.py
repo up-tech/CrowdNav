@@ -49,11 +49,12 @@ def main():
     params = {"learning_rate": 1e-3,
               "tensorboard_log": logdir,
               #"exploration_initial_eps": 0.5,
-              "batch_size": 5}
+              "batch_size": 5,
+              "learning_starts":500}
 
     #output dim == action discrete number
     #model = DQN("MultiInputPolicy", env, verbose=1, **params, policy_kwargs=policy_kwargs)
-    model = PPO("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
+    model =  DQN("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
     print(model.policy)
 
     TIMESTEPS = 1000
