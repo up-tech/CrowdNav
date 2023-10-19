@@ -8,6 +8,7 @@ from numpy.linalg import norm
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
 from crowd_sim.envs.utils.utils import point_to_segment_dist
+from crowd_sim.envs.utils.state import ObservableState
 
 
 class CrowdSim(gym.Env):
@@ -57,6 +58,7 @@ class CrowdSim(gym.Env):
         self.collision_penalty = config.getfloat('reward', 'collision_penalty')
         self.discomfort_dist = config.getfloat('reward', 'discomfort_dist')
         self.discomfort_penalty_factor = config.getfloat('reward', 'discomfort_penalty_factor')
+        self.robot_scan_radius = config.getfloat("robot", "scan_radius")
         if self.config.get('humans', 'policy') == 'orca':
             self.case_capacity = {'train': np.iinfo(np.uint32).max - 2000, 'val': 1000, 'test': 1000}
             self.case_size = {'train': np.iinfo(np.uint32).max - 2000, 'val': config.getint('env', 'val_size'),
@@ -305,11 +307,42 @@ class CrowdSim(gym.Env):
 
         # get current observation
         if self.robot.sensor == 'coordinates':
-            ob = [human.get_observable_state() for human in self.humans]
+            #ob = [human.get_observable_state() for human in self.humans]
+            scanned_humans, _ = self.get_scanned_humans()
+            ob = [human.get_observable_state() for human in scanned_humans]
+            ob_human_nums = len(ob)
+            if ob_human_nums == 0:
+                ob = [self.generate_encouraged_ob()]
+                ob_human_nums += 1
+            for i in range(self.human_num - ob_human_nums):
+                ob.append(ObservableState(self.robot.px, self.robot.py, 0, 0, 0))
+
         elif self.robot.sensor == 'RGB':
             raise NotImplementedError
 
         return ob
+
+    def generate_encouraged_ob(self):
+        human_radius = self.config.getfloat("humans", "radius")
+        s = self.robot.get_full_state()
+        d = ((s.gx - s.px) ** 2 + (s.gy - s.py) ** 2) ** 0.5 + 1e-8
+        d2 = d + self.robot.radius + human_radius + 0.1
+        hx = s.gx - (s.gx - s.px) * d2 / d
+        hy = s.gy - (s.gy - s.py) * d2 / d
+
+        return ObservableState(0, 0, 0, 0, human_radius)
+
+    def get_scanned_humans(self):
+        rpx, rpy = self.robot.px, self.robot.py
+        scanned_humans = []
+        indexes = []
+        for i in range(len(self.humans)):
+            human = self.humans[i]
+            dist = ((human.px - rpx) ** 2 + (human.py - rpy) ** 2) ** (1 / 2)
+            if dist <= self.robot_scan_radius:
+                scanned_humans.append(human)
+                indexes.append(i)
+        return scanned_humans, indexes
 
     def onestep_lookahead(self, action):
         return self.step(action, update=False)
@@ -388,6 +421,7 @@ class CrowdSim(gym.Env):
             done = False
             info = Nothing()
 
+        scanned_humans, indexes = self.get_scanned_humans()
         if update:
             # store state, action value and attention weights
             self.states.append([self.robot.get_full_state(), [human.get_full_state() for human in self.humans]])
@@ -408,14 +442,20 @@ class CrowdSim(gym.Env):
 
             # compute the observation
             if self.robot.sensor == 'coordinates':
-                ob = [human.get_observable_state() for human in self.humans]
+                ob = [human.get_observable_state() for human in scanned_humans]
             elif self.robot.sensor == 'RGB':
                 raise NotImplementedError
         else:
             if self.robot.sensor == 'coordinates':
-                ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
+                ob = [human.get_next_observable_state(action) for human, action in zip(scanned_humans, human_actions)]
             elif self.robot.sensor == 'RGB':
                 raise NotImplementedError
+        ob_human_nums = len(ob)
+        if ob_human_nums == 0:
+            ob = [self.generate_encouraged_ob()]
+            ob_human_nums += 1
+        for i in range(self.human_num - ob_human_nums):
+            ob.append(ObservableState(self.robot.px, self.robot.py, 0, 0, 0))
 
         return ob, reward, done, info
 
