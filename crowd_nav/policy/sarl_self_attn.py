@@ -28,9 +28,11 @@ class ValueNetwork(nn.Module):
 
         self.added_mlp = nn.Linear(100, 50)
 
-        self.q_linear = nn.Linear(100, 50)
-        self.k_linear = nn.Linear(100, 50)
-        self.v_linear = nn.Linear(100, 50)
+        self.q_linear = nn.Linear(100, 70)
+        self.q2_linear = nn.Linear(70, 50)
+        self.k_linear = nn.Linear(100, 70)
+        self.k2_linear = nn.Linear(70, 50)
+        #self.v_linear = nn.Linear(100, 50)
 
     def forward(self, state):
         """
@@ -43,7 +45,7 @@ class ValueNetwork(nn.Module):
         size = state.shape
         self_state = state[:, 0, :self.self_state_dim]
         mlp1_output = self.mlp1(state.view((-1, size[2])))
-        mlp2_output = self.mlp2(mlp1_output)
+        #mlp2_output = self.mlp2(mlp1_output)
 
         if self.with_global_state:
             # compute attention scores
@@ -58,7 +60,11 @@ class ValueNetwork(nn.Module):
 
         q = self.q_linear(attention_input)
         q = relu(q)
+        q = self.q2_linear(q)
+        q = relu(q)
         k = self.k_linear(attention_input)
+        k = relu(k)
+        k = self.k2_linear(k)
         k = relu(k)
         k = torch.transpose(k, -1, -2)
 
@@ -71,9 +77,9 @@ class ValueNetwork(nn.Module):
         weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
         self.attention_weights = weights[0, :, 0].data.cpu().numpy()
         
-        v = self.added_mlp(attention_input)
+        v = self.mlp2(attention_input)
         v = torch.transpose(v, -1, -2)
-        v = relu(v)
+        #v = relu(v)
 
         e_h = torch.bmm(v, weights).squeeze(-1)
         
