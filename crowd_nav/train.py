@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--policy', type=str, default='cadrl')
     parser.add_argument('--policy_config', type=str, default='configs/policy.config')
     parser.add_argument('--train_config', type=str, default='configs/train.config')
-    parser.add_argument('--output_dir', type=str, default='data/sarl_self_attn_output_2')
+    parser.add_argument('--output_dir', type=str, default='data/sarl_lstm_attn_output')
     parser.add_argument('--weights', type=str)
     parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
@@ -98,7 +98,7 @@ def main():
     # configure trainer and explorer
     memory = ReplayMemory(capacity)
     model = policy.get_model()
-    print(model)
+    #print(model)
     batch_size = train_config.getint('trainer', 'batch_size')
     trainer = Trainer(model, memory, device, batch_size)
     explorer = Explorer(env, robot, device, memory, policy.gamma, target_policy=policy)
@@ -156,8 +156,8 @@ def main():
         robot.policy.set_epsilon(epsilon)
 
         # evaluate the model
-        if episode % evaluation_interval == 0:
-            explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
+        # if episode % evaluation_interval == 0:
+        #     explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
 
         # sample k episodes into memory and optimize over the generated memory
         explorer.run_k_episodes(sample_episodes, 'train', update_memory=True, episode=episode)

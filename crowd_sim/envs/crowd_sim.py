@@ -47,6 +47,8 @@ class CrowdSim(gym.Env):
         self.states = None
         self.action_values = None
         self.attention_weights = None
+        self.hist_len = None
+        self.hist_ob = None
 
     def configure(self, config):
         self.config = config
@@ -57,6 +59,7 @@ class CrowdSim(gym.Env):
         self.collision_penalty = config.getfloat('reward', 'collision_penalty')
         self.discomfort_dist = config.getfloat('reward', 'discomfort_dist')
         self.discomfort_penalty_factor = config.getfloat('reward', 'discomfort_penalty_factor')
+        self.hist_len = config.getint('humans', 'history_length')
         if self.config.get('humans', 'policy') == 'orca':
             self.case_capacity = {'train': np.iinfo(np.uint32).max - 2000, 'val': 1000, 'test': 1000}
             self.case_size = {'train': np.iinfo(np.uint32).max - 2000, 'val': config.getint('env', 'val_size'),
@@ -253,6 +256,7 @@ class CrowdSim(gym.Env):
         Set px, py, gx, gy, vx, vy, theta for robot and humans
         :return:
         """
+        self.hist_ob = []
         if self.robot is None:
             raise AttributeError('robot has to be set!')
         assert phase in ['train', 'val', 'test']
@@ -308,6 +312,14 @@ class CrowdSim(gym.Env):
             ob = [human.get_observable_state() for human in self.humans]
         elif self.robot.sensor == 'RGB':
             raise NotImplementedError
+           
+        self.hist_ob += ob
+
+        for i in range (1, self.hist_len):
+            ob += self.hist_ob
+        
+        # print(f"ob length: {len(ob)}")
+        # print(f"hist ob length: {len(self.hist_ob)}")
 
         return ob
 
@@ -416,6 +428,26 @@ class CrowdSim(gym.Env):
                 ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
             elif self.robot.sensor == 'RGB':
                 raise NotImplementedError
+        #print(f"ob in in in in {len(ob)}")
+        
+        total_ob = self.hist_ob + ob
+        self.hist_ob = total_ob[ : ]
+
+        total_ob_len = int(len(total_ob) / self.human_num)
+        
+        if total_ob_len <= self.hist_len:
+            for i in range(total_ob_len, self.hist_len):
+                total_ob += ob
+            ob = total_ob
+        else:
+            total_ob = total_ob[10 : ]
+            self.hist_ob = self.hist_ob[10 : ]
+            ob = total_ob
+
+        assert len(ob)/self.human_num == self.hist_len
+
+        # print(f"in step hist len {len(self.hist_ob)}")
+        # print(f"in step ob len {len(ob)}")
 
         return ob, reward, done, info
 
