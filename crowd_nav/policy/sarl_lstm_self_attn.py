@@ -33,7 +33,7 @@ class ValueNetwork(nn.Module):
         self.v_linear = nn.Linear(100, 50)
 
         self.lstm_input_dim = 7 # human feature size
-        self.lstm_hidden_dim = 70 # hidden size
+        self.lstm_hidden_dim = 50 # hidden size
         self.lstm = nn.LSTM(self.lstm_input_dim, self.lstm_hidden_dim, batch_first=True)
 
     def forward(self, state):
@@ -51,6 +51,16 @@ class ValueNetwork(nn.Module):
 
         robot_state = state[:, : 10, :self.self_state_dim]
         human_state = state[:, :, self.self_state_dim: ]
+        human_state_seq = [None] * 10
+        
+        for i in range(10):
+            human_state_seq[i] = human_state[:, i:i+1, :]
+            for n in range(1, 5):
+                if i == 9 and n == 4:
+                    human_state_seq[i] = torch.cat([human_state_seq[i], human_state[:, 10*n+i:, :]], dim=1)
+                else:
+                    human_state_seq[i] = torch.cat([human_state_seq[i], human_state[:, 10*n+i:10*n+i+1, :]], dim=1)
+        
         #human_state = human_state.reshape(100, 5, -1)
         #print(f"robot state size: {robot_state.shape}")
         #print(f"human state size: {human_state.shape}")
@@ -58,11 +68,20 @@ class ValueNetwork(nn.Module):
         h0 = torch.zeros(1, size[0], self.lstm_hidden_dim)
         c0 = torch.zeros(1, size[0], self.lstm_hidden_dim)
 
-        output, (hn, cn) = self.lstm(human_state, (h0, c0))
-        hn = hn.squeeze(0).view(size[0], 10, -1)
+        hn_seq = [None] * 10
+
+        for i in range(10):
+            output, (hn_seq[i], cn) = self.lstm(human_state_seq[i], (h0, c0))
+            hn_seq[i] = hn_seq[i].squeeze(0).unsqueeze(1)
+        
+        hn = hn_seq[0]
+        for i in range(1, 10):
+            hn = torch.cat([hn, hn_seq[i]], dim=1)
+        
         #print(f"hn state size: {hn.shape}")
 
         total_state = torch.cat([robot_state, hn], dim=-1)
+        #print(total_state.shape)
 
         size = total_state.shape
 
@@ -128,8 +147,10 @@ class SARL_LSTM_ATTN(MultiHumanRL):
         attention_dims = [int(x) for x in config.get('sarl', 'attention_dims').split(', ')]
         self.with_om = config.getboolean('sarl', 'with_om')
         with_global_state = config.getboolean('sarl', 'with_global_state')
-        self.model = ValueNetwork(self.input_dim(), self.self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims,
-                                  attention_dims, with_global_state, self.cell_size, self.cell_num)
+        # self.model = ValueNetwork(self.input_dim(), self.self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims,
+        #                           attention_dims, with_global_state, self.cell_size, self.cell_num)
+        self.model = ValueNetwork(56, self.self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims,
+                            attention_dims, with_global_state, self.cell_size, self.cell_num)
         self.multiagent_training = config.getboolean('sarl', 'multiagent_training')
         if self.with_om:
             self.name = 'OM-SARL'
