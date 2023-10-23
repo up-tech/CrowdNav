@@ -141,7 +141,7 @@ class SARL_LSTM_ATTN(MultiHumanRL):
         with_global_state = config.getboolean('sarl', 'with_global_state')
         # self.model = ValueNetwork(self.input_dim(), self.self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims,
         #                           attention_dims, with_global_state, self.cell_size, self.cell_num)
-        self.model = ValueNetwork(56, self.self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims,
+        self.model = ValueNetwork(20, self.self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims,
                             attention_dims, with_global_state, self.cell_size, self.cell_num)
         self.multiagent_training = config.getboolean('sarl', 'multiagent_training')
         if self.with_om:

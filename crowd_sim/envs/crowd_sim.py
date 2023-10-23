@@ -8,6 +8,7 @@ from numpy.linalg import norm
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
 from crowd_sim.envs.utils.utils import point_to_segment_dist
+from crowd_sim.envs.utils.state import ObservableState
 
 
 class CrowdSim(gym.Env):
@@ -49,6 +50,7 @@ class CrowdSim(gym.Env):
         self.attention_weights = None
         self.hist_len = None
         self.hist_ob = None
+        self.zero_ob = ObservableState(0, 0, 0, 0, 0)
 
     def configure(self, config):
         self.config = config
@@ -80,6 +82,8 @@ class CrowdSim(gym.Env):
             logging.info("Not randomize human's radius and preferred speed")
         logging.info('Training simulation: {}, test simulation: {}'.format(self.train_val_sim, self.test_sim))
         logging.info('Square width: {}, circle width: {}'.format(self.square_width, self.circle_radius))
+
+        self.zero_ob_list = [self.zero_ob] * self.human_num
 
     def set_robot(self, robot):
         self.robot = robot
@@ -315,8 +319,8 @@ class CrowdSim(gym.Env):
            
         self.hist_ob += ob
 
-        for i in range (1, self.hist_len):
-            ob += self.hist_ob
+        for i in range(1, self.hist_len):
+            ob += self.zero_ob_list
         
         # print(f"ob length: {len(ob)}")
         # print(f"hist ob length: {len(self.hist_ob)}")
@@ -437,17 +441,17 @@ class CrowdSim(gym.Env):
         
         if total_ob_len <= self.hist_len:
             for i in range(total_ob_len, self.hist_len):
-                total_ob += ob
+                total_ob += self.zero_ob_list
             ob = total_ob
         else:
-            total_ob = total_ob[10 : ]
-            self.hist_ob = self.hist_ob[10 : ]
+            total_ob = total_ob[self.human_num : ]
+            self.hist_ob = self.hist_ob[self.human_num : ]
             ob = total_ob
-
+            
         assert len(ob)/self.human_num == self.hist_len
-
-        # print(f"in step hist len {len(self.hist_ob)}")
         # print(f"in step ob len {len(ob)}")
+        # print(f"in step hist len {len(self.hist_ob)}")
+        
 
         return ob, reward, done, info
 
