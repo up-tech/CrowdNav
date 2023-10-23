@@ -6,6 +6,11 @@ from crowd_nav.policy.cadrl import mlp
 from crowd_nav.policy.multi_human_rl import MultiHumanRL
 import numpy as np
 
+# def count_parameters(model):  # 传入的是模型实例对象
+#     params = [p.numel() for p in model.parameters() if p.requires_grad]
+#     for item in params:
+#         print(f'{item:>16}')   # 参数大于16的展示
+#     print(f'________\n{sum(params):>16}')  # 大于16的进行统计，可以自行修改
 
 class ValueNetwork(nn.Module):
     def __init__(self, input_dim, self_state_dim, mlp1_dims, mlp2_dims, mlp3_dims, attention_dims, with_global_state,
@@ -33,7 +38,7 @@ class ValueNetwork(nn.Module):
         self.v_linear = nn.Linear(100, 50)
 
         self.lstm_input_dim = 7 # human feature size
-        self.lstm_hidden_dim = 50 # hidden size
+        self.lstm_hidden_dim = 14 # hidden size
         self.lstm = nn.LSTM(self.lstm_input_dim, self.lstm_hidden_dim, batch_first=True)
 
     def forward(self, state):
@@ -54,34 +59,21 @@ class ValueNetwork(nn.Module):
         human_state_seq = [None] * 10
         
         for i in range(10):
-            human_state_seq[i] = human_state[:, i:i+1, :]
-            for n in range(1, 5):
-                if i == 9 and n == 4:
-                    human_state_seq[i] = torch.cat([human_state_seq[i], human_state[:, 10*n+i:, :]], dim=1)
-                else:
-                    human_state_seq[i] = torch.cat([human_state_seq[i], human_state[:, 10*n+i:10*n+i+1, :]], dim=1)
-        
-        #human_state = human_state.reshape(100, 5, -1)
-        #print(f"robot state size: {robot_state.shape}")
-        #print(f"human state size: {human_state.shape}")
+            human_state_seq[i] = human_state[:, i::10, :]
+
+ #       count_parameters(self.lstm)
 
         h0 = torch.zeros(1, size[0], self.lstm_hidden_dim)
         c0 = torch.zeros(1, size[0], self.lstm_hidden_dim)
 
         hn_seq = [None] * 10
-
         for i in range(10):
             output, (hn_seq[i], cn) = self.lstm(human_state_seq[i], (h0, c0))
             hn_seq[i] = hn_seq[i].squeeze(0).unsqueeze(1)
         
-        hn = hn_seq[0]
-        for i in range(1, 10):
-            hn = torch.cat([hn, hn_seq[i]], dim=1)
+        hn = torch.cat(hn_seq, dim=1)
         
-        #print(f"hn state size: {hn.shape}")
-
         total_state = torch.cat([robot_state, hn], dim=-1)
-        #print(total_state.shape)
 
         size = total_state.shape
 
