@@ -50,7 +50,7 @@ def main():
               "tensorboard_log": logdir,
               #"exploration_initial_eps": 0.5,
               "batch_size": 64,
-              "learning_starts":500}
+              "learning_starts":200}
 
     #output dim == action discrete number
     #model = DQN("MultiInputPolicy", env, verbose=1, **params)
