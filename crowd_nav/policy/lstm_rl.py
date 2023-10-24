@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 import logging
-from crowd_nav.policy.cadrl import mlp
-from crowd_nav.policy.multi_human_rl import MultiHumanRL
+#from crowd_nav.policy.cadrl import mlp
+#from crowd_nav.policy.multi_human_rl import MultiHumanRL
 
 
 class ValueNetwork1(nn.Module):

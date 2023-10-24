@@ -18,7 +18,7 @@ class CustomNN(BaseFeaturesExtractor):
           nn.Linear(100, 100),
           nn.ReLU(),
           nn.Linear(100, 50),
-        )        
+        )
         self.mlp3 = nn.Sequential(
           nn.Linear(56, 150),
           nn.ReLU(),

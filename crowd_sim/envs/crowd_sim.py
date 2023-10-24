@@ -56,15 +56,17 @@ class CrowdSim(gym.Env):
         self.mapping_linear_x = lambda action: ((action % 10) - 5) / 5.0
         self.mapping_linear_y = lambda action: (math.floor(action / 10) - 5) / 5.0
 
-        human_0_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
-        human_1_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
-        human_2_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+        space_dict = {}
+        for i in range(3):
+            space_dict.update({f'human_{i}_ob' : spaces.Box(low=-5, high=5, shape=(13,))})
 
-        self.observation_space = spaces.Dict({
-            'human_0_ob': human_0_observation_space,
-            'human_1_ob': human_1_observation_space,
-            'human_2_ob': human_2_observation_space
-        })
+        self.observation_space = spaces.Dict(space_dict)
+        
+        #print(f"observation size: {self.observation_space}")
+
+        # human_0_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+        # human_1_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
+        # human_2_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
 
         #self.observation_space = spaces.Box(low=-5, high=5, shape=(13,))
 
@@ -225,13 +227,12 @@ class CrowdSim(gym.Env):
             state_output = torch.cat((self_state, human_state[6 : ]), dim=0)
 
         ob = {}
-        ob['human_0_ob'] = state_tensor[0]
-        ob['human_1_ob'] = state_tensor[1]
-        ob['human_2_ob'] = state_tensor[2]
+        for i in range(self.human_num):
+            ob[f'human_{i}_ob'] = state_tensor[i]
 
-        #ob = state_tensor
-
-        #print(ob)
+        # ob['human_0_ob'] = state_tensor[0]
+        # ob['human_1_ob'] = state_tensor[1]
+        # ob['human_2_ob'] = state_tensor[2]
 
         return ob
     
@@ -413,11 +414,12 @@ class CrowdSim(gym.Env):
         state_tensor = self.rotate(state_tensor)
 
         ob = {}
-        ob['human_0_ob'] = state_tensor[0]
-        ob['human_1_ob'] = state_tensor[1]
-        ob['human_2_ob'] = state_tensor[2]
+        for i in range(self.human_num):
+            ob[f'human_{i}_ob'] = state_tensor[i]
 
-        #ob = state_tensor
+        # ob['human_0_ob'] = state_tensor[0]
+        # ob['human_1_ob'] = state_tensor[1]
+        # ob['human_2_ob'] = state_tensor[2]
 
         info = {}
         return ob, reward, done, info
