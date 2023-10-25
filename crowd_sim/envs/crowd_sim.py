@@ -178,7 +178,7 @@ class CrowdSim(gym.Env):
         :return:
         """
 
-        self.last_dist = 4.0
+        self.last_dist = self.circle_radius * 2
 
         if self.robot is None:
             raise AttributeError('robot has to be set!')
@@ -342,9 +342,8 @@ class CrowdSim(gym.Env):
         #print(f"end position: {end_position}")
         #print(f"goal position: {np.array(self.robot.get_goal_position())}")
 
-        current_dist = math.sqrt(end_position[0] * end_position[0] + (self.circle_radius - end_position[1]) * (self.circle_radius - end_position[1]))
+        current_dist = math.sqrt(end_position[0] ** 2 + (self.circle_radius - end_position[1]) ** 2)
         #print(f'current_dist is: {current_dist}')
-
         delta_dist = self.last_dist - current_dist
         #print(f'delta_dist is: {delta_dist}')
         self.last_dist = current_dist
