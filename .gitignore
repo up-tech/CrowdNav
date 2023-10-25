@@ -13,3 +13,5 @@ venv*/
 data/
 *.mp4
 videos/
+logs/
+models/

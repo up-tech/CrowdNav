@@ -57,7 +57,7 @@ class CrowdSim(gym.Env):
         self.mapping_linear_y = lambda action: (math.floor(action / 10) - 5) / 5.0
 
         space_dict = {}
-        for i in range(3):
+        for i in range(5):
             space_dict.update({f'human_{i}_ob' : spaces.Box(low=-5, high=5, shape=(13,))})
 
         self.observation_space = spaces.Dict(space_dict)
@@ -339,8 +339,10 @@ class CrowdSim(gym.Env):
         #print(f'end_position is: {end_position[0]}, {end_position[1]}')
 
         reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
+        #print(f"end position: {end_position}")
+        #print(f"goal position: {np.array(self.robot.get_goal_position())}")
 
-        current_dist = math.sqrt(end_position[0] * end_position[0] + (2 - end_position[1]) * (2 - end_position[1]))
+        current_dist = math.sqrt(end_position[0] * end_position[0] + (self.circle_radius - end_position[1]) * (self.circle_radius - end_position[1]))
         #print(f'current_dist is: {current_dist}')
 
         delta_dist = self.last_dist - current_dist
@@ -503,7 +505,7 @@ class CrowdSim(gym.Env):
 
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
-            goal = mlines.Line2D([0], [2], color=goal_color, marker='*', linestyle='None', markersize=15, label='Goal')
+            goal = mlines.Line2D([0], [self.circle_radius], color=goal_color, marker='*', linestyle='None', markersize=15, label='Goal')
             robot = plt.Circle(robot_positions[0], self.robot.radius, fill=True, color=robot_color)
             ax.add_artist(robot)
             ax.add_artist(goal)

@@ -39,7 +39,7 @@ class CustomNN(BaseFeaturesExtractor):
             obs_list.append(observations[key].unsqueeze(1))
         state = torch.cat(obs_list, dim=1)
         size = state.shape
-        print(f"obs tensor shape: {size}")
+        #print(f"obs tensor shape: {size}")
 
         self_state = state[:, 0, :6]
         mlp1_output = self.mlp1(state.view((-1, size[2])))
@@ -50,12 +50,12 @@ class CustomNN(BaseFeaturesExtractor):
         weights = (scores_exp / torch.sum(scores_exp, dim=-1, keepdim=True)).unsqueeze(2)
         features = mlp2_output.view(size[0], size[1], -1)
         weighted_feature = torch.sum(torch.mul(weights, features), dim=1)
-        print(f"weighted_feature shape: {weighted_feature.shape}")
+        #print(f"weighted_feature shape: {weighted_feature.shape}")
         joint_state = torch.cat([self_state, weighted_feature], dim=1)
         value = self.mlp3(joint_state)
 
         #self.attention_weights = weights[0, :, 0].data.cpu().numpy()
     
-        print(value.shape)
+        #print(value.shape)
         
         return value

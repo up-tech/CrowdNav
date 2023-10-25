@@ -50,7 +50,7 @@ def main():
               "tensorboard_log": logdir,
               #"exploration_initial_eps": 0.5,
               "batch_size": 64,
-              "learning_starts":200}
+              "learning_starts":5000}
 
     #output dim == action discrete number
     #model = DQN("MultiInputPolicy", env, verbose=1, **params)
@@ -58,9 +58,9 @@ def main():
     #model = DQN("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
     print(model.policy)
 
-    TIMESTEPS = 1000
+    TIMESTEPS = 10000
 
-    for ep in range(1, 10):
+    for ep in range(1, 20):
         model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name="DQN")
         model.save(f"{models_dir}/{TIMESTEPS*ep}")
 
