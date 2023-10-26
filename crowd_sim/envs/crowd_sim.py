@@ -62,14 +62,6 @@ class CrowdSim(gym.Env):
 
         self.observation_space = spaces.Dict(space_dict)
         
-        #print(f"observation size: {self.observation_space}")
-
-        # human_0_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
-        # human_1_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
-        # human_2_observation_space = spaces.Box(low=-5, high=5, shape=(13,))
-
-        #self.observation_space = spaces.Box(low=-5, high=5, shape=(13,))
-
         self.last_dist = None
 
     def configure(self, config):
@@ -172,33 +164,24 @@ class CrowdSim(gym.Env):
         del sim
         return self.human_times
 
-    def reset(self, phase='test', test_case=None):
+    def reset(self, seed=None):
         """
         Set px, py, gx, gy, vx, vy, theta for agents (robot and humans)
         :return:
         """
+        # TODO: need impl seed
 
         self.last_dist = self.circle_radius * 2
 
         if self.robot is None:
             raise AttributeError('robot has to be set!')
-        
-        assert phase in ['train', 'val', 'test']
-
-        if test_case is not None:
-            self.case_counter[phase] = test_case
-        
+     
         self.global_time = 0
 
         self.human_times = [0] * self.human_num
 
-        # counter_offset = {'train': self.case_capacity['val'] + self.case_capacity['test'],
-        #                     'val': 0, 'test': self.case_capacity['val']}
         #set robot initial state px py gx gy vx vy theta
         self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, np.pi / 2)
-
-        # if self.case_counter[phase] >= 0:
-        #     np.random.seed(counter_offset[phase] + self.case_counter[phase])
 
         self.generate_random_human_position(human_num=self.human_num)
 
@@ -213,14 +196,12 @@ class CrowdSim(gym.Env):
             self.attention_weights = list()
 
         # get current observation
-
         ob = [human.get_observable_state() for human in self.humans]
         
         state = JointState(self.robot.get_full_state(), ob)
         state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
                                   for human_state in state.human_states], dim=0)
         state_tensor = self.rotate(state_tensor)
-        #print(state_tensor)
 
         self_state = state_tensor[0][ : 6]
         for human_state in state_tensor:
@@ -229,10 +210,6 @@ class CrowdSim(gym.Env):
         ob = {}
         for i in range(self.human_num):
             ob[f'human_{i}_ob'] = state_tensor[i]
-
-        # ob['human_0_ob'] = state_tensor[0]
-        # ob['human_1_ob'] = state_tensor[1]
-        # ob['human_2_ob'] = state_tensor[2]
 
         return ob
     
@@ -286,10 +263,12 @@ class CrowdSim(gym.Env):
         """
         #print(f"action in sim: {action}")
         #print(type(action))
+
         if isinstance(action, np.ndarray):
             action = action[0]
         action_vx = self.mapping_linear_x(action)
         action_vy = self.mapping_linear_y(action)
+
         #print(f"action_vx: {action_vx}; action_vy: {action_vy}")
 
         human_actions = []
@@ -394,19 +373,6 @@ class CrowdSim(gym.Env):
             if self.human_times[i] == 0 and human.reached_destination():
                 self.human_times[i] = self.global_time
 
-        # compute the observation
-
-        # ob = [human.get_observable_state() for human in self.humans]
-        # state = JointState(self.robot.get_full_state(), ob)
-        # state_tensor = torch.cat([torch.Tensor([state.self_state + human_state])
-        #                         for human_state in state.human_states], dim=0)
-        # state_tensor = self.rotate(state_tensor)
-        # state_output = state_tensor[0][ : 6]
-        # for human_state in state_tensor:
-        #     state_output = torch.cat((state_output, human_state[6 : ]), dim=0)
-        
-        # ob = [human.get_observable_state() for human in self.humans]
-
         ob = [human.get_observable_state() for human in self.humans]
         
         state = JointState(self.robot.get_full_state(), ob)
@@ -417,10 +383,6 @@ class CrowdSim(gym.Env):
         ob = {}
         for i in range(self.human_num):
             ob[f'human_{i}_ob'] = state_tensor[i]
-
-        # ob['human_0_ob'] = state_tensor[0]
-        # ob['human_1_ob'] = state_tensor[1]
-        # ob['human_2_ob'] = state_tensor[2]
 
         info = {}
         return ob, reward, done, info
