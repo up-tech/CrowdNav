@@ -46,18 +46,21 @@ def main():
 
     params = {"learning_rate": 1e-3,
               "tensorboard_log": logdir,
-              "batch_size": 64,
-              #"learning_starts":5000,
-              #"exploration_initial_eps": 0.5,
+              "batch_size": 100,
+              "exploration_fraction": 1,
+              "exploration_initial_eps": 0.5,
+              "exploration_final_eps": 0.1,
+              "target_update_interval": 50,
+              "learning_starts":10000,
              }
 
     model = DQN("MultiInputPolicy", env, verbose=1, **params, policy_kwargs=policy_kwargs)
     #model = DQN("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
     print(model.policy)
 
-    time_steps = int(2e+5)
+    time_steps = int(1e+5)
 
-    for ep in range(1, 30):
+    for ep in range(1, 10):
         model.learn(total_timesteps=time_steps, reset_num_timesteps=False, tb_log_name="DQN")
         model.save(f"{models_dir}/{time_steps*ep}")
 

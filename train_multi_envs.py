@@ -24,6 +24,7 @@ def make_env(env_id, rank, seed=0):
         #set env config
         env.configure(env_config)
         env.set_robot(robot)
+        env.reset(seed=seed+rank)
 
         env = Monitor(env)
         return env
@@ -50,7 +51,6 @@ def main():
     method = policy_config.get('policy', 'method')
     print(f'robot policy method: {method}')
     policy = policy_factory[method]
-    print(model.policy)
 
     policy_kwargs = dict(features_extractor_class=policy,
                          net_arch=[128],
@@ -58,20 +58,25 @@ def main():
 
     params = {"learning_rate": 1e-3,
               "tensorboard_log": logdir,
-              "batch_size": 64,
-              #"exploration_initial_eps": 0.5,
-              #"learning_starts":200,
+              "batch_size": 100,
+              "exploration_fraction": 0.4,
+              "exploration_initial_eps": 0.5,
+              "exploration_final_eps": 0.1,
+              "target_update_interval": 5000,
+              "learning_starts": 10000,
              }
 
+    #model = DQN("MultiInputPolicy", env, verbose=1, **params)
     model = DQN("MultiInputPolicy", env, verbose=1, **params, policy_kwargs=policy_kwargs)
     #model = DQN("MlpPolicy", env, verbose=2, **params, policy_kwargs=policy_kwargs) 
     #print(model.policy)
 
-    time_steps = int(2e+5)
+    time_steps = int(2e+6)
 
-    for ep in range(1, 30):
-        model.learn(total_timesteps=time_steps, reset_num_timesteps=False, tb_log_name="DQN")
-        model.save(f"{models_dir}/{time_steps*ep}")
+    #for ep in range(1, 10):
+    model.learn(total_timesteps=time_steps, reset_num_timesteps=False, tb_log_name="DQN")
+    #model.save(f"{models_dir}/{time_steps*ep}")
+    model.save(f"{models_dir}/{time_steps}")
 
     env.close()
 

@@ -54,7 +54,7 @@ class SARL(BaseFeaturesExtractor):
         joint_state = torch.cat([self_state, weighted_feature], dim=1)
         value = self.mlp3(joint_state)
 
-        #self.attention_weights = weights[0, :, 0].data.cpu().numpy()
+        self.attention_weights = weights[0, :, 0].data.cpu().numpy()
     
         #print(value.shape)
         

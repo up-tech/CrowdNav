@@ -13,7 +13,7 @@ def main():
     models_dir = "models/DQN"
     logdir = "logs"
 
-    models_path = f"{models_dir}/50000.zip"
+    models_path = f"{models_dir}/100000.zip"
 
     env_config = configparser.RawConfigParser()
     policy_config = configparser.RawConfigParser()

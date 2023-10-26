@@ -51,10 +51,10 @@ class CrowdSim(gym.Env):
         self.action_values = None
         self.attention_weights = None
 
-        self.action_space = spaces.Discrete(100)
+        self.action_space = spaces.Discrete(81)
 
-        self.mapping_linear_x = lambda action: ((action % 10) - 5) / 5.0
-        self.mapping_linear_y = lambda action: (math.floor(action / 10) - 5) / 5.0
+        self.mapping_linear_x = lambda action: ((action % 9) - 4) / 4.0
+        self.mapping_linear_y = lambda action: (math.floor(action / 9) - 4) / 4.0
 
         space_dict = {}
         for i in range(5):
@@ -73,19 +73,13 @@ class CrowdSim(gym.Env):
         self.collision_penalty = config.getfloat('reward', 'collision_penalty')
         self.discomfort_dist = config.getfloat('reward', 'discomfort_dist')
         self.discomfort_penalty_factor = config.getfloat('reward', 'discomfort_penalty_factor')
-        # random seed ???
-        self.case_capacity = {'train': np.iinfo(np.uint32).max - 2000, 'val': 1000, 'test': 1000}
-        self.case_size = {'train': np.iinfo(np.uint32).max - 2000, 'val': config.getint('env', 'val_size'),
-                            'test': config.getint('env', 'test_size')}
-    
         self.circle_radius = config.getfloat('sim', 'circle_radius')
         self.human_num = config.getint('sim', 'human_num')
-        self.case_counter = {'train': 0, 'test': 0, 'val': 0}
 
         logging.info('human number: {}'.format(self.human_num))
         if self.randomize_attributes:
             logging.info("Randomize human's radius and preferred speed")
-        else:
+        else: 
             logging.info("Not randomize human's radius and preferred speed")
 
     def set_robot(self, robot):
@@ -96,6 +90,12 @@ class CrowdSim(gym.Env):
         self.humans = []
         for i in range(human_num):
             self.humans.append(self.generate_circle_crossing_human())
+
+        # pos = []
+        # for i in range(human_num):
+        #     pos.append(self.humans[i].px)
+        #     pos.append(self.humans[i].py)
+        # print(f"humans pos: {pos}")
 
     # px py gx gy vx vy theta
     def generate_circle_crossing_human(self):
@@ -120,6 +120,7 @@ class CrowdSim(gym.Env):
             if not collide:
                 break
         human.set(px, py, -px, -py, 0, 0, 0)
+
         return human
 
     def get_human_times(self):
@@ -352,9 +353,9 @@ class CrowdSim(gym.Env):
             done = False
             info = Nothing()
         
-        reward = reward_to_goal + reward
+        #reward = reward_to_goal + reward
         
-        #print(f'reward is: {reward}')
+        #print(f'reward_to_goal is: {reward_to_goal}')
 
         # store state, action value and attention weights
         self.states.append([self.robot.get_full_state(), [human.get_full_state() for human in self.humans]])
