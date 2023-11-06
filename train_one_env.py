@@ -41,7 +41,7 @@ def main():
     #print(model.policy)
 
     policy_kwargs = dict(features_extractor_class=policy,
-                         net_arch=[128],
+                         net_arch=[256, 256],
                          )
 
     params = {"learning_rate": 1e-3,

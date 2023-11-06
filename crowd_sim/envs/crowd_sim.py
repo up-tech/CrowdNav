@@ -328,7 +328,7 @@ class CrowdSim(gym.Env):
         #print(f'delta_dist is: {delta_dist}')
         self.last_dist = current_dist
 
-        reward_to_goal = delta_dist * 0.1
+        reward_to_goal = delta_dist * 0.05
 
         if self.global_time >= self.time_limit - 1:
             reward = 0
