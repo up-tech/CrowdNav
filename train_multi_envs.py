@@ -106,11 +106,11 @@ def main():
 
     params = {"learning_rate": 2e-4,
               "tensorboard_log": logdir,
-              "batch_size": 100,
+              "batch_size": 1000,
               "exploration_fraction": 0.4,
               "exploration_initial_eps": 0.5,
               "exploration_final_eps": 0.1,
-              "target_update_interval": 50000,
+              "target_update_interval": 20000,
               "learning_starts": 0,
               "buffer_size": 10000000,
              }
@@ -118,7 +118,7 @@ def main():
     model = DQN("MultiInputPolicy", env, verbose=1, **params, policy_kwargs=policy_kwargs)
     
     callback = SaveOnBestTrainingRewardCallback(check_freq=1e+3, log_dir=monitor_log)
-
+    
     time_steps = int(1e+7)
 
     model.learn(total_timesteps=time_steps, tb_log_name="DQN", callback=callback)

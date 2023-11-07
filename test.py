@@ -12,10 +12,10 @@ def main():
 
     models_dir = "models/DQN"
     logdir = "logs"
-    monitor_dir = "monitor"
+    monitor_dir = "monitor/saved_model"
 
     #models_path = f"{models_dir}/1000000.zip"
-    models_path = monitor_dir + '/saved_model_model150000.zip'
+    models_path = monitor_dir + '/model_50000.zip'
 
     env_config = configparser.RawConfigParser()
     policy_config = configparser.RawConfigParser()
