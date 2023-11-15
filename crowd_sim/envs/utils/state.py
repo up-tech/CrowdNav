@@ -39,12 +39,11 @@ class ObservableState(object):
     def __str__(self):
         return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius]])
 
-
 class JointState(object):
     def __init__(self, self_state, human_states):
         assert isinstance(self_state, FullState)
         for human_state in human_states:
-            assert isinstance(human_state, ObservableState)
+            assert isinstance(human_state, FullState)
 
         self.self_state = self_state
         self.human_states = human_states

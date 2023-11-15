@@ -5,168 +5,43 @@ As basic class for crowd nav simulation
 import logging
 import math
 import gym
+from gym import spaces
 import matplotlib.lines as mlines
 import numpy as np
 import rvo2
 import torch
 from matplotlib import patches
 from numpy.linalg import norm
-from crowd_sim.envs.utils.human import Human
-from crowd_sim.envs.utils.robot import Robot
 from crowd_sim.envs.utils.info import *
-from crowd_sim.envs.utils.utils import point_to_segment_dist
 from collections import namedtuple
 from crowd_sim.envs.utils.action import ActionXY, ActionRot
+from crowd_sim.envs.basic_env import BasicEnv
 
 
-class BasicEnv(gym.Env):
+class SARLEnv(BasicEnv):
 
     def __init__(self):
-        super(BasicEnv, self).__init__()
-        self.time_limit = None
-        self.time_step = None
-        self.robot = None  # agent robot
-        self.humans = None # agent humans
-        self.global_time = None
-
-        # simulation configuration
-        self.config = None
-        self.circle_radius = None
-        self.human_num = None
-
-        # for visualization
-        self.states = None
-        self.action_values = None
+        super(SARLEnv, self).__init__()
 
     def configure(self, config):
-        self.config = config
-        self.time_limit = config.getint('env', 'time_limit')
-        self.time_step = config.getfloat('env', 'time_step')
-
-        self.circle_radius = config.getfloat('sim', 'circle_radius')
-        self.human_num = config.getint('sim', 'human_num')
-
-        self.generate_agents(self.config)
+        super().configure(config)
 
     def reset(self, seed = None):
+        ob = super().reset(seed=seed)
 
-        np.random.seed(seed)
-
-        if self.robot is None:
-            raise AttributeError('robot has to be set!')
-        if self.humans is None:
-            raise AttributeError('humans has to be set!')
-     
-        self.global_time = 0
-
-        self.reset_robot_position()
-        self.reset_human_positon()
-
-        for agent in [self.robot] + self.humans:
-            agent.time_step = self.time_step
-            agent.policy.time_step = self.time_step
-
-        self.states = list()
-
-        # get initial observation
-        ob = [self.robot.get_full_state()] + [human.get_full_state() for human in self.humans]
-
-        self.states.append(ob)
+        # transform_ob
         return ob
     
     def step(self, action):
-        done = False
 
-        human_actions = []
-        for human in self.humans:
-            # observation for humans is always coordinates
-            ob = [other_human.get_full_state() for other_human in self.humans if other_human != human]
-            
-            if self.robot.visible:
-                ob += [self.robot.get_full_state()]
-
-            human_actions.append(human.act(ob))
-
-        for i, human in enumerate(self.humans):
-            px = human.px - self.robot.px
-            py = human.py - self.robot.py
-            vx = human.vx - action.vx
-            vy = human.vy - action.vy
-            ex = px + vx * self.time_step
-            ey = py + vy * self.time_step
-
-        # collision detection between humans
-        human_num = len(self.humans)
-        for i in range(human_num):
-            for j in range(i + 1, human_num):
-                dx = self.humans[i].px - self.humans[j].px
-                dy = self.humans[i].py - self.humans[j].py
-                dist = (dx ** 2 + dy ** 2) ** (1 / 2) - self.humans[i].radius - self.humans[j].radius
-                if dist < 0:
-                    # detect collision but don't take humans' collision into account
-                    logging.debug('Collision happens between humans in step()')
-
-        # update all agents
-        self.robot.step(action)
-        for i, human_action in enumerate(human_actions):
-            self.humans[i].step(human_action)
-        
-        self.global_time += self.time_step
-
-        if self.global_time > self.time_limit:
-            done = True
-        if self.robot.reached_destination():
-            done = True
-
-        ob = [self.robot.get_full_state()] + [human.get_full_state() for human in self.humans]
-        
-        self.states.append(ob)
-
-        reward = 0
-        info = {}
+        ob, reward, done, info = super().step()
+        # transform_ob
 
         return ob, reward, done, info
-
-    def generate_agents(self, config):
-        robot = Robot(config, 'robot')
-        #robot.set_policy()
-        self.robot = robot
-        self.humans = []
-        for i in range(self.human_num):
-            human = Human(self.config, 'humans')
-            #human.set_policy()
-            self.humans.append(human)
-
-    def reset_human_positon(self):
-        for i in range(self.human_num):
-            self.generate_circle_crossing_human(self.humans[i])
-
-    def reset_robot_position(self):
-        self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, np.pi / 2)
-
-    # px py gx gy vx vy theta
-    def generate_circle_crossing_human(self, human):
-        while True:
-            angle = np.random.random() * np.pi * 2
-            # add some noise to simulate all the possible cases robot could meet with human
-            px_noise = (np.random.random() - 0.5) * human.v_pref
-            py_noise = (np.random.random() - 0.5) * human.v_pref
-            px = self.circle_radius * np.cos(angle) + px_noise
-            py = self.circle_radius * np.sin(angle) + py_noise
-            collide = False
-            # for agent in [self.robot] + self.humans:
-            #     min_dist = human.radius + agent.radius
-            #     if norm((px - agent.px, py - agent.py)) < min_dist or norm((px - agent.gx, py - agent.gy)) < min_dist:
-            #         collide = True
-            #         break
-            if not collide:
-                break
-        human.set(px, py, -px, -py, 0, 0, 0)
-        return human
     
     def robot_interface(self):
-        return self.robot
-    
+        return super().robot_interface()
+ 
     def render(self, mode='human', output_file=None):
         from matplotlib import animation
         import matplotlib.pyplot as plt
