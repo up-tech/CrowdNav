@@ -22,7 +22,8 @@ def main():
         done = False
         while not done:
             action = env.robot_interface().act(ob)
-            ob, _, done, info = env.step(action)
+            ob, reward, done, info = env.step(action)
+            print(reward)
         env.render()
     env.close()
 
