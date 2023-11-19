@@ -7,10 +7,10 @@ import crowd_sim.envs.basic_env
 def main():
     env_config = configparser.RawConfigParser()
     policy_config = configparser.RawConfigParser()
-    env_config.read('crowd_nav/configs/env.config')
+    env_config.read('crowd_nav/configs/sarl_env.config')
     policy_config.read('crowd_nav/configs/policy.config')
 
-    env = gym.make('BasicEnv-v0')
+    env = gym.make('SARLEnv-v0')
     env.configure(env_config)
 
     total_episodes = 5
@@ -23,7 +23,6 @@ def main():
         while not done:
             action = env.robot_interface().act(ob)
             ob, reward, done, info = env.step(action)
-            print(reward)
         env.render()
     env.close()
 

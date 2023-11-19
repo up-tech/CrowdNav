@@ -13,7 +13,6 @@ from collections import namedtuple
 from crowd_sim.envs.utils.action import ActionXY, ActionRot
 from crowd_sim.envs.basic_env import BasicEnv
 
-
 class SARLEnv(BasicEnv):
 
     def __init__(self):
@@ -30,7 +29,7 @@ class SARLEnv(BasicEnv):
     
     def step(self, action):
 
-        ob, reward, done, info = super().step()
+        ob, reward, done, info = super().step(action)
         # transform_ob
 
         return ob, reward, done, info
@@ -39,6 +38,6 @@ class SARLEnv(BasicEnv):
         return super().robot_interface()
  
     def render(self, mode=None):
-        super().render(self, mode)
+        super().render(mode)
 
     
