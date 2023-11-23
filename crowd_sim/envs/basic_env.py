@@ -68,6 +68,7 @@ class BasicEnv(gym.Env):
         ob = [self.robot.get_full_state()] + [human.get_full_state() for human in self.humans]
 
         self.states.append(ob)
+        # return full state of all agents include robot and humans
         return ob
     
     def step(self, action):
