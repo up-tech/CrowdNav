@@ -22,15 +22,17 @@ class SARLEnv(BasicEnv):
         super(SARLEnv, self).__init__()
 
         self.action_space = spaces.Discrete(81)
+        self.observation_space = spaces.Box(low=-5, high=5, shape=(10, 13,))
 
         self.mapping_linear_x = lambda action: ((action % 9) - 4) / 4.0
         self.mapping_linear_y = lambda action: (math.floor(action / 9) - 4) / 4.0
 
-        space_dict = {}
-        for i in range(5):
-            space_dict.update({f'human_{i}_ob' : spaces.Box(low=-5, high=5, shape=(13,))})
+        # space_dict = {}
+        # for i in range(5):
+        #     space_dict.update({f'human_{i}_ob' : spaces.Box(low=-5, high=5, shape=(13,))})
 
-        self.observation_space = spaces.Dict(space_dict)
+        # self.observation_space = spaces.Dict(space_dict)
+
 
     def configure(self, config):
         super().configure(config)
@@ -42,6 +44,7 @@ class SARLEnv(BasicEnv):
         return ob
     
     def step(self, action):
+        
         ob, reward, done, info = super().step(action)
         ob = self.transform_ob(ob)
 
@@ -58,9 +61,9 @@ class SARLEnv(BasicEnv):
                             for human_state in ob[1:]], dim=0)
         for each_tensor in state_tensor:
             each_tensor = each_tensor[:14]
-        #print(state_tensor)
 
         local_ob = self.rotate(state_tensor)
+        print(local_ob)
 
         return local_ob
     

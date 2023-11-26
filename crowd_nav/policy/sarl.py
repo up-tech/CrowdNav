@@ -2,10 +2,11 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch.nn as nn
 import torch
 import gym
+from gym import spaces
 
 class SARL(BaseFeaturesExtractor):
 
-    def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 128):
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 128):
         super(SARL, self).__init__(observation_space, features_dim)
 
         self.mlp1 = nn.Sequential(
