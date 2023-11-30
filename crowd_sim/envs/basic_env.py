@@ -60,7 +60,8 @@ class BasicEnv(gym.Env):
 
         for agent in [self.robot] + self.humans:
             agent.time_step = self.time_step
-            agent.policy.time_step = self.time_step
+            if agent != self.robot:
+                agent.policy.time_step = self.time_step
 
         self.states = list()
 
@@ -97,19 +98,71 @@ class BasicEnv(gym.Env):
         
         self.global_time += self.time_step
 
-        if self.global_time > self.time_limit:
-            done = True
-        if self.robot.reached_destination():
-            done = True
+        # if self.global_time > self.time_limit:
+        #     done = True
+        # if self.robot.reached_destination():
+        #     done = True
 
         ob = [self.robot.get_full_state()] + [human.get_full_state() for human in self.humans]
-        
         self.states.append(ob)
 
-        reward = 0
+        reward, done = self.calculate_reward(action)
         info = {}
 
         return ob, reward, done, info
+    
+    def calculate_reward(self, action):
+        collision = False
+        for i, human in enumerate(self.humans):
+            px = human.px - self.robot.px
+            py = human.py - self.robot.py
+            vx = human.vx - action.vx
+            vy = human.vy - action.vy
+            ex = px + vx * self.time_step
+            ey = py + vy * self.time_step
+            # closest distance between boundaries of two agents
+            closest_dist = self.point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - self.robot.radius
+            if closest_dist < 0:
+                collision = True
+                # logging.debug("Collision: distance between robot and p{} is {:.2E}".format(i, closest_dist))
+                break
+        
+        end_position = np.array(self.robot.compute_position(action, self.time_step))
+        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
+
+        if self.global_time >= self.time_limit - 1:
+            reward = 0
+            done = True
+        elif collision:
+            #reward = self.collision_penalty
+            reward = -0.25
+            done = True
+        elif reaching_goal:
+            #reward = self.success_reward
+            reward = 1
+            done = True
+        else:
+            reward = 0
+            done = False
+        
+        return reward, done
+    
+    def point_to_segment_dist(self, x1, y1, x2, y2, x3, y3):
+        px = x2 - x1
+        py = y2 - y1
+
+        if px == 0 and py == 0:
+            return np.linalg.norm((x3-x1, y3-y1))
+        
+        u = ((x3 - x1) * px + (y3 - y1) * py) / (px * px + py * py)
+        if u > 1:
+            u = 1
+        elif u < 0:
+            u = 0
+        x = x1 + u * px
+        y = y1 + u * py
+
+        return np.linalg.norm((x - x3, y-y3))
 
     def generate_agents(self, config):
         robot = Robot(config, 'robot')

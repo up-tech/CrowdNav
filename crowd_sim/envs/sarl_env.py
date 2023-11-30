@@ -22,7 +22,7 @@ class SARLEnv(BasicEnv):
         super(SARLEnv, self).__init__()
 
         self.action_space = spaces.Discrete(81)
-        self.observation_space = spaces.Box(low=-5, high=5, shape=(10, 13,))
+        self.observation_space = spaces.Box(low=-10, high=10, shape=(10, 13,))
 
         self.mapping_linear_x = lambda action: ((action % 9) - 4) / 4.0
         self.mapping_linear_y = lambda action: (math.floor(action / 9) - 4) / 4.0
@@ -44,8 +44,12 @@ class SARLEnv(BasicEnv):
         return ob
     
     def step(self, action):
-        
-        ob, reward, done, info = super().step(action)
+
+        action_vx = self.mapping_linear_x(action)
+        action_vy = self.mapping_linear_y(action)
+        action_tuple = ActionXY(action_vx, action_vy)
+
+        ob, reward, done, info = super().step(action_tuple)
         ob = self.transform_ob(ob)
 
         return ob, reward, done, info
@@ -63,7 +67,7 @@ class SARLEnv(BasicEnv):
             each_tensor = each_tensor[:14]
 
         local_ob = self.rotate(state_tensor)
-        print(local_ob)
+        #print(local_ob)
 
         return local_ob
     

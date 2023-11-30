@@ -34,12 +34,14 @@ class SARL(BaseFeaturesExtractor):
         )
         
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        #print(f"dict len: {len(observations)}")
-        obs_list = []
-        for key in observations.keys():
-            obs_list.append(observations[key].unsqueeze(1))
-        state = torch.cat(obs_list, dim=1)
-        size = state.shape
+
+        # obs_list = []
+        # for key in observations.keys():
+        #     obs_list.append(observations[key].unsqueeze(1))
+        # state = torch.cat(obs_list, dim=1)
+        state = observations
+        size = observations.shape
+
         #print(f"obs tensor shape: {size}")
 
         self_state = state[:, 0, :6]
